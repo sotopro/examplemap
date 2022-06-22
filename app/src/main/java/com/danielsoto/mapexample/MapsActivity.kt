@@ -5,7 +5,9 @@ import android.content.Context
 import android.content.pm.PackageManager
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.util.Log
 import androidx.core.app.ActivityCompat
+import androidx.lifecycle.MutableLiveData
 
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
@@ -15,11 +17,13 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MarkerOptions
 import com.danielsoto.mapexample.databinding.ActivityMapsBinding
 import com.google.android.gms.location.*
+import java.util.*
 
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
     private lateinit var mMap: GoogleMap
     private lateinit var binding: ActivityMapsBinding
+    val mCurrentLocation = MutableLiveData<LocationModel>()
     private val SECOND = 1000L
     lateinit var mFusedLocationClient: FusedLocationProviderClient
     val locationCallbackRequest = LocationRequest.create().apply {
@@ -27,13 +31,17 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         fastestInterval = 5 * SECOND
         priority = LocationRequest.PRIORITY_HIGH_ACCURACY
     }
+    private val logTAG = MapsActivity::class.java.simpleName
     lateinit var locationCallback: LocationCallback
 
     fun startLocationTracking(context: Context){
         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
         locationCallback = object: LocationCallback() {
-            override fun onLocationResult(currentLocation: LocationResult) {
-                super.onLocationResult(currentLocation)
+            override fun onLocationResult(locations: LocationResult) {
+                super.onLocationResult(locations)
+                for(location in locations.locations) {
+                    mCurrentLocation.postValue(LocationModel(location, Calendar.getInstance().timeInMillis))
+                }
             }
         }
         if (ActivityCompat.checkSelfPermission(
@@ -59,7 +67,9 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
         binding = ActivityMapsBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        checkPermissionAndSetView()
+        mCurrentLocation.observe(this, androidx.lifecycle.Observer {
+            Log.e(logTAG, "${it.location.latitude}, ${it.location.longitude}, ${it.timeStamp}")
+        })
     }
 
     override fun onPause() {
