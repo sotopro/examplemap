@@ -67,9 +67,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
         binding = ActivityMapsBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        mCurrentLocation.observe(this, androidx.lifecycle.Observer {
-            Log.e(logTAG, "${it.location.latitude}, ${it.location.longitude}, ${it.timeStamp}")
-        })
     }
 
     override fun onPause() {
@@ -79,7 +76,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
     override fun onResume() {
         super.onResume()
-        startLocationTracking(this)
+        checkPermissionAndSetView()
     }
 
     private fun checkPermissionAndSetView() {
@@ -88,6 +85,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
             val mapFragment = supportFragmentManager
                 .findFragmentById(R.id.map) as SupportMapFragment
             mapFragment.getMapAsync(this)
+            startLocationTracking(this)
         } else {
             PermissionHelper.askForLocationPermission(this)
         }
@@ -115,10 +113,37 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
      */
     override fun onMapReady(googleMap: GoogleMap) {
         mMap = googleMap
-
+        mCurrentLocation.observe(this, androidx.lifecycle.Observer {
+            Log.e(logTAG, "${it.location.latitude}, ${it.location.longitude}, ${it.timeStamp}")
+            val location = LatLng(it.location.latitude, it.location.longitude)
+            mMap.addMarker(MarkerOptions().position(location).title("${it.timeStamp}"))
+            mMap.moveCamera(CameraUpdateFactory.newLatLng(location))
+        })
+        if (ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            // TODO: Consider calling
+            //    ActivityCompat#requestPermissions
+            // here to request the missing permissions, and then overriding
+            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+            //                                          int[] grantResults)
+            // to handle the case where the user grants the permission. See the documentation
+            // for ActivityCompat#requestPermissions for more details.
+            return
+        }
+        mMap.isMyLocationEnabled = true
+        mMap.uiSettings.isZoomControlsEnabled = true
+        mMap.uiSettings.isCompassEnabled = true
+        mMap.setMinZoomPreference(4f)
+        mMap.setMaxZoomPreference(20f)
 //        // Add a marker in Sydney and move the camera
 //        val sydney = LatLng(-34.0, 151.0)
-//        mMap.addMarker(MarkerOptions().position(sydney).title("Marker in Sydney"))
-//        mMap.moveCamera(CameraUpdateFactory.newLatLng(sydney))
+        // mMap.addMarker(MarkerOptions().position(location).title("Marker in Sydney"))
+        // mMap.moveCamera(CameraUpdateFactory.newLatLng(location))
     }
 }
